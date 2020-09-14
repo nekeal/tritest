@@ -12,14 +12,14 @@ def get_troop_speed(troop_type, world_settings: WorldSettings):
         Troops.SPEAR.value: 18,
         Troops.SWORD.value: 22,
         Troops.AXE.value: 18,
-        # Troops.ARCHER.value: 18,
+        Troops.ARCHER.value: 18,
         Troops.SPY.value: 9,
         Troops.LIGHT.value: 10,
-        # Troops.MARCHER.value: 10,
+        Troops.MARCHER.value: 10,
         Troops.HEAVY.value: 11,
         Troops.RAM.value: 30,
         Troops.CATAPULT.value: 30,
-        # Troops.KNIGHT.value: 10,
+        Troops.KNIGHT.value: 10,
         Troops.SNOB.value: 35,
     }
     return troop_speed_map[troop_type.value] / world_speed / troop_speed

@@ -15,14 +15,14 @@ class Troops(Enum):
     SPEAR = 'spear'
     SWORD = 'sword'
     AXE = 'axe'
-    # ARCHER = 'archer'
+    ARCHER = 'archer'
     SPY = 'spy'
-    # MARCHER = 'marcher'
+    MARCHER = 'marcher'
     LIGHT = 'light'
     HEAVY = 'heavy'
     RAM = 'ram'
     CATAPULT = 'catapult'
-    # KNIGHT = 'knight'
+    KNIGHT = 'knight'
     SNOB = 'snob'
 
     def __str__(self):
