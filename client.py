@@ -2,6 +2,7 @@ import random
 import re
 import time
 from collections import deque
+from datetime import timedelta
 from enum import Enum
 from random import uniform
 from typing import Tuple
@@ -126,7 +127,7 @@ class TribalClient:
         max_storage = int(self.driver.driver.find_element_by_id('storage').text)
         population = int(self.driver.driver.find_element_by_css_selector('span#pop_current_label').text)
         max_population = int(self.driver.driver.find_element_by_css_selector('span#pop_max_label').text)
-        return VillageResources(wood, stone, iron, population, max_storage, max_population)
+        return VillageResources(wood, stone, iron, population, timedelta(0), max_storage, max_population)
 
     def _fill_troop_form(self, troop_type, value):
         input_text = self.driver.driver.find_element_by_css_selector(f'#unit_input_{troop_type}')
