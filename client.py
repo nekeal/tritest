@@ -1,6 +1,7 @@
 import random
 import re
 import time
+from collections import deque
 from enum import Enum
 from random import uniform
 from typing import Tuple
@@ -180,6 +181,21 @@ class TribalClient:
                 time.sleep(0.2)
                 self._confirm_attack()
                 time.sleep(0.2)
+
+    def build(self, build_queue: deque):
+        for i in range(2):
+            if not build_queue:
+                print('Pusta kolejka')
+                return
+            building_name = build_queue.popleft()
+            try:
+                building_row = self.driver.driver.find_element_by_css_selector(f'tr#main_buildrow_{building_name}')
+                build_button = building_row.find_element_by_css_selector('td.build_options a.btn-build')
+                build_button.click()
+                print(build_button.text)
+            except Exception as e:
+                print(e)
+                build_queue.appendleft(building_name)
 
     def continous_attack(self, light_chunk_size=20):
         self.go_to_place()
