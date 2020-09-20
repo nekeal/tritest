@@ -17,6 +17,8 @@ troop_building_types = ('barracks', 'stable', 'garage',)
 def farm_villages(client: TribalClient, villages: List[Village], strategy='closest', village_count=2,
                   skip_count=0,
                   light_chunk_size=10,
+                  spear_chunk_size=10,
+                  sword_chunk_size=10,
                   stop_at_full_storage=True):
     client.go_to_place()
     if strategy == 'closest':
@@ -39,6 +41,12 @@ def farm_villages(client: TribalClient, villages: List[Village], strategy='close
             troops_to_attack[Troops.KNIGHT.value] = available_troops[Troops.KNIGHT.value]
         if available_troops[Troops.LIGHT.value] >= light_chunk_size:
             troops_to_attack[Troops.LIGHT.value] = light_chunk_size
+            client.send_attack(village.cords, troop_config=troops_to_attack)
+        elif available_troops[Troops.SPEAR.value] >= spear_chunk_size:
+            troops_to_attack[Troops.SPEAR.value] = spear_chunk_size
+            client.send_attack(village.cords, troop_config=troops_to_attack)
+        elif available_troops[Troops.SWORD.value] >= sword_chunk_size:
+            troops_to_attack[Troops.SWORD.value] = sword_chunk_size
             client.send_attack(village.cords, troop_config=troops_to_attack)
 
 
