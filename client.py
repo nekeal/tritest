@@ -9,7 +9,7 @@ from urllib.parse import urlparse
 
 from webbot import Browser
 
-from models import Village, WorldSettings, Resources
+from models import Village, WorldSettings, Resources, VillageResources
 
 
 class Troops(Enum):
@@ -126,7 +126,7 @@ class TribalClient:
         max_storage = int(self.driver.driver.find_element_by_id('storage').text)
         population = int(self.driver.driver.find_element_by_css_selector('span#pop_current_label').text)
         max_population = int(self.driver.driver.find_element_by_css_selector('span#pop_max_label').text)
-        return Resources(wood, stone, iron, population, max_storage, max_population)
+        return VillageResources(wood, stone, iron, population, max_storage, max_population)
 
     def _fill_troop_form(self, troop_type, value):
         input_text = self.driver.driver.find_element_by_css_selector(f'#unit_input_{troop_type}')
