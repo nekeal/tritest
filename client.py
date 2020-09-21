@@ -2,33 +2,16 @@ import random
 import re
 import time
 from collections import deque
-from datetime import timedelta
-from enum import Enum
+from datetime import timedelta, datetime
 from random import uniform
 from typing import Tuple
-from urllib.parse import urlparse
+from urllib.parse import urlparse, parse_qs, urlencode
 
+from selenium.common.exceptions import StaleElementReferenceException, NoSuchElementException
 from webbot import Browser
 
-from models import Village, WorldSettings, Resources, VillageResources
-
-
-class Troops(Enum):
-    SPEAR = 'spear'
-    SWORD = 'sword'
-    AXE = 'axe'
-    ARCHER = 'archer'
-    SPY = 'spy'
-    MARCHER = 'marcher'
-    LIGHT = 'light'
-    HEAVY = 'heavy'
-    RAM = 'ram'
-    CATAPULT = 'catapult'
-    KNIGHT = 'knight'
-    SNOB = 'snob'
-
-    def __str__(self):
-        return self.value
+from helpers import TimeHelper
+from models import Village, WorldSettings, Resources, VillageResources, Troops
 
 
 def parse_village_html(element: 'WebElement'):
@@ -70,6 +53,14 @@ class TribalClient:
         outgoings_attacks_box = self.driver.driver.find_element_by_id('commands_outgoings')
         attacked_villages_elements = outgoings_attacks_box.find_elements_by_class_name('quickedit-label')
 
+    @staticmethod
+    def _replace_screen_in_url(url, screen_name: str) -> str:
+        parsed_url = urlparse(url)
+        parsed_query = parse_qs(parsed_url.query)
+        parsed_query['screen'] = screen_name
+        final_url = parsed_url._replace(query=urlencode(parsed_query, doseq=True)).geturl()
+        return final_url
+
     def go_to_place(self):
         if 'screen=place' not in self.driver.get_current_url():
             self.driver.go_to(f'{self.get_current_domain()}/game.php?village=62967&screen=place')
@@ -77,6 +68,10 @@ class TribalClient:
     def go_to_train_screen(self):
         if 'screen=train' not in self.driver.get_current_url():
             self.driver.go_to(f'{self.get_current_domain()}/game.php?village=62967&screen=train')
+
+    def go_to_main_screen(self):
+        if 'screen=main' not in self.driver.get_current_url():
+            self.driver.go_to(self._replace_screen_in_url(self.driver.get_current_url(), 'main'))
 
     def slow_type(self, text, *args, **kwargs):
         text_input = self.driver.find_elements(*args, **kwargs)[0]
@@ -90,13 +85,16 @@ class TribalClient:
         self.driver.driver.find_element_by_css_selector('.village-item.village-more').click()
 
     def get_nearest_barbarians_villages(self, radius=10):
-        self.go_to_place()
-        self.driver.click(css_selector='input[value="village_name"]') # nazwa wioski radio button
+        # self.go_to_place()
+        # self.driver.click(css_selector='input[value="village_name"]')  # nazwa wioski radio button
         self.slow_type('Wioska Barbarzyńska', css_selector='#content_value .target-input-field')
+        time.sleep(0.2)
         x = self.driver.driver.find_elements_by_class_name('target-input-field')
         farthest_village_distance = 1
         villages = []
+        # time.sleep(0.5)
         while farthest_village_distance < radius:
+            time.sleep(0.1)
             villages = self.driver.driver.find_elements_by_css_selector('div.target-select-autocomplete .village-item')[:-1]
             farthest_village_distance = parse_village_html(villages[-1]).distance
             self._extend_viallages_list()
@@ -183,19 +181,61 @@ class TribalClient:
                 self._confirm_attack()
                 time.sleep(0.2)
 
+    def _get_build_row(self, building_name):
+        return self.driver.driver.find_element_by_css_selector(f'tr#main_buildrow_{building_name}')
+
+    def _get_build_orders_rows_for_building(self, building_name: str):
+        return self.driver.driver.find_elements_by_class_name(f'buildorder_{building_name}')
+
+    def _get_build_queue_rows(self):
+        self.go_to_main_screen()
+        return self.driver.driver.find_elements_by_css_selector(
+            'tbody#buildqueue>tr.nodrag, tbody#buildqueue>.sortable_row'
+        )
+
+    def get_build_queue_size(self):
+        return len(self._get_build_queue_rows())
+
+    def get_build_end_time(self):
+        build_queue_rows = self._get_build_queue_rows()
+        end_time = datetime.now()
+        for build_row in build_queue_rows:
+            time_string = build_row.find_element_by_css_selector('td')
+            end_time += TimeHelper.parse_tribal_timedelta_format(time_string)
+        return end_time
+
+    def get_building_level(self, building_name) -> int:
+        building_row = self._get_build_row(building_name)
+        current_level_string = building_row.find_element_by_tag_name('td').find_element_by_tag_name('span').text
+        try:
+            current_level = int(re.search("\d+", current_level_string).group())
+        except AttributeError:
+            current_level = 0
+        build_order_row_for_building = self._get_build_orders_rows_for_building(building_name)
+        return current_level + len(build_order_row_for_building)
+
     def build(self, build_queue: deque):
-        for i in range(2):
+        for i in range(2 - self.get_build_queue_size()):
             if not build_queue:
                 print('Pusta kolejka')
                 return
             building_name = build_queue.popleft()
+            building_row = self._get_build_row(building_name)
             try:
-                building_row = self.driver.driver.find_element_by_css_selector(f'tr#main_buildrow_{building_name}')
-                build_button = building_row.find_element_by_css_selector('td.build_options a.btn-build')
+                build_inactive_displayed = building_row.find_element_by_css_selector('span.inactive').is_displayed()
+            except NoSuchElementException:
+                build_inactive_displayed = False
+            if build_inactive_displayed:
+                print(f"Currently you can't build {building_name}")
+                build_queue.appendleft(building_name)
+                return
+            build_button = building_row.find_element_by_css_selector('td.build_options a.btn-build')
+            try:
                 build_button.click()
-                print(build_button.text)
-            except Exception as e:
-                print(e)
+                level = int(re.search(r'\d+', build_button.text).group())
+                print(f'Built {building_name} at level {level}')
+                time.sleep(0.1)
+            except StaleElementReferenceException:
                 build_queue.appendleft(building_name)
 
     def continous_attack(self, light_chunk_size=20):

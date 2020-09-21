@@ -1,7 +1,7 @@
 import math
+from datetime import timedelta
 
-from client import Troops
-from models import WorldSettings
+from models import WorldSettings, Troops
 from models import TroopBuildingTypes
 
 
@@ -37,3 +37,12 @@ def get_troop_types_by_building(building_type):
         TroopBuildingTypes.GARAGE.value: [Troops.SNOB, Troops.CATAPULT]
     }
     return building_to_troops_map[building_type]
+
+
+class TimeHelper:
+
+    @classmethod
+    def parse_tribal_timedelta_format(cls, time_string):
+        splitted_time = time_string.text.split(':')
+        hours, minutes, seconds = list(map(int, splitted_time))
+        return timedelta(hours=hours, minutes=minutes, seconds=seconds)

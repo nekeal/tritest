@@ -1,8 +1,20 @@
 import math
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import timedelta, datetime
 from enum import Enum
 from typing import Dict, Tuple, Optional, AnyStr
+
+
+class QueueTypes:
+    BARRACKS = 'barracks'
+    STABLE = 'stable'
+    GARAGE = 'garage'
+    BUILD = 'build'
+    ATTACK = 'attack'
+
+    @classmethod
+    def get_recruit_queues_names(cls):
+        return cls.BARRACKS, cls.STABLE, cls.GARAGE
 
 
 @dataclass
@@ -102,5 +114,53 @@ class TroopBuildingTypes(Enum):
     GARAGE = "garage"
 
 
-class Buildings(Enum):
-    pass
+
+@dataclass
+class Troop:
+    name: str
+    speed: int
+    wood: int
+    stone: int
+    iron: int
+
+
+@dataclass
+class RequiredResourcesInfo:
+    wood: int
+    stone: int
+    iron: int
+    wood_factor: float = 1
+    stone_factor: float = 1
+    iron_factor: float = 1
+
+
+@dataclass
+class ActionQueue:
+    name: str
+    end: datetime
+
+# @dataclass
+# class BuildTimeInfo:
+
+# @dataclass
+# class Building:
+#     max_level: int
+#     min_level: int
+#     required_resources: RequiredResources
+
+class Troops(Enum):
+    SPEAR = 'spear'
+    SWORD = 'sword'
+    AXE = 'axe'
+    # ARCHER = 'archer'
+    SPY = 'spy'
+    # MARCHER = 'marcher'
+    LIGHT = 'light'
+    HEAVY = 'heavy'
+    RAM = 'ram'
+    CATAPULT = 'catapult'
+    KNIGHT = 'knight'
+    SNOB = 'snob'
+
+    def __str__(self):
+        return self.value

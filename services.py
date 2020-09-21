@@ -1,17 +1,17 @@
 import random
+from collections import deque
 from datetime import timedelta, datetime
 from enum import Enum
 from typing import List
 
+import yaml
 from selenium.common.exceptions import NoSuchElementException
 
-from client import TribalClient, Troops
-from helpers import get_distance_from_cords, get_troop_speed, get_troop_types_by_building
-from models import Village, WorldSettings, TroopBuildingTypes
+from client import TribalClient
+from helpers import get_distance_from_cords, get_troop_speed, get_troop_types_by_building, TimeHelper
+from models import Village, WorldSettings, TroopBuildingTypes, QueueTypes, Troops
 
 farm_strategies = ('closest', 'random', 'continous')
-
-troop_building_types = ('barracks', 'stable', 'garage',)
 
 
 def farm_villages(client: TribalClient, villages: List[Village], strategy='closest', village_count=2,
@@ -42,10 +42,10 @@ def farm_villages(client: TribalClient, villages: List[Village], strategy='close
         if available_troops[Troops.LIGHT.value] >= light_chunk_size:
             troops_to_attack[Troops.LIGHT.value] = light_chunk_size
             client.send_attack(village.cords, troop_config=troops_to_attack)
-        elif available_troops[Troops.SPEAR.value] >= spear_chunk_size:
+        elif spear_chunk_size and available_troops[Troops.SPEAR.value] >= spear_chunk_size:
             troops_to_attack[Troops.SPEAR.value] = spear_chunk_size
             client.send_attack(village.cords, troop_config=troops_to_attack)
-        elif available_troops[Troops.SWORD.value] >= sword_chunk_size:
+        elif sword_chunk_size and available_troops[Troops.SWORD.value] >= sword_chunk_size:
             troops_to_attack[Troops.SWORD.value] = sword_chunk_size
             client.send_attack(village.cords, troop_config=troops_to_attack)
 
@@ -70,22 +70,19 @@ def show_trip_time_for_all_units_between_cords(cords1, cords2, world_settings: W
 def get_recruit_end_times(client: TribalClient):
     client.go_to_train_screen()
     recruit_end_times = {}
-    for troop_building_type in TroopBuildingTypes:
+    for troop_queue_type in QueueTypes.get_recruit_queues_names():
         try:
             troop_building_type_recruit_box = client.driver.driver. \
-                                               find_element_by_id(f'trainqueue_wrap_{troop_building_type.value}'). \
+                                               find_element_by_id(f'trainqueue_wrap_{troop_queue_type}'). \
                                                find_elements_by_css_selector('tr.lit,tr.sortable_row')
         except NoSuchElementException:
-            print(f"Cant get {troop_building_type.value} queue")
+            print(f"Cant get {troop_queue_type} queue")
             troop_building_type_recruit_box = []
         total_time = timedelta()
         for row in troop_building_type_recruit_box:
             time_td = row.find_elements_by_tag_name('td')[1]
-            splitted_time = time_td.text.split(':')
-            hours, minutes, seconds = list(map(int, splitted_time))
-            recruit_time = timedelta(hours=hours, minutes=minutes, seconds=seconds)
-            total_time += recruit_time
-        recruit_end_times[troop_building_type.value] = datetime.now() + total_time
+            total_time += TimeHelper.parse_tribal_timedelta_format(time_td)
+        recruit_end_times[troop_queue_type] = datetime.now() + total_time
     return {k: v for k, v in sorted(recruit_end_times.items(), key=lambda item: item[1])}
 
 
@@ -98,5 +95,22 @@ def recruit_by_relative_value(client: TribalClient, troop_relative_recruit_confi
                 max_count = client.get_troop_type_count_available_to_recruit(troop_type)
                 client.fill_recruit_troop_form(troop_type, round(max_count * relative_value))
     client.confirm_recruit()
+
+
+def build_from_file_strategy(client: TribalClient, filename):
+    with open('build_strategy.yaml') as f:
+        building_list = yaml.load(f, yaml.FullLoader)
+    client.go_to_main_screen()
+    for building_name, level in building_list:
+        building_current_level = client.get_building_level(building_name)
+        if building_current_level >= level:
+            print(f'{building_name} already at level {building_current_level} ({level})')
+            continue
+        for i in range(min(level - building_current_level, 2 - client.get_build_queue_size())):
+            client.build(deque([building_name]))
+
+
+def get_build_queue_end_time(client: TribalClient):
+    pass
 # .find_elements_by_tag_name('td')[1].text
 
